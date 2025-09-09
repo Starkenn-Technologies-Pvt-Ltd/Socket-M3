@@ -13,6 +13,7 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 const fs = require("fs");
 const { normalizedJSON3 } = require("./Utils/normalizeJSON3");
+const { socketDataToSend } = require("./Utils/socketDataToSend");
 
 // Initialize Express app
 const app = express();
@@ -62,65 +63,15 @@ const mqttTrigger = () => {
   client.on("message", async (topic, message) => {
     try {
       if (message) {
-        setTimeout(() => {
-          // console.log("message:::::", message.toString());
-        }, 5000);
         let mqttmsg = JSON.parse(message.toString());
         let normalizedJSON; // Check message version for different normalization protocols
         if (mqttmsg?.ver === "JSON_2.0") {
           // Normalize using protocol 2.0
           normalizedJSON = await normalizedJSON2(mqttmsg);
-
-          const eventName = JSON.parse(normalizedJSON).HMI_ID;
-
-          io.timeout(5000).emit(eventName, normalizedJSON, (err, responses) => {
-            if (err) {
-              // some clients did not acknowledge the event in the given delay
-              console.error(
-                `Emit to event '${eventName}' timed out or failed.`
-              );
-            } else {
-              // all clients responded with an acknowledgment
-              console.log(`Successfully emitted data on event '${eventName}'.`);
-            }
-          });
-
-          await sendNormalizedJsonToAwsIotCore(normalizedJSON);
-        } else if (mqttmsg?.ver === "MSIL_DMS") {
-          // Normalize using protocol 3.0 MSIL JSON
-          normalizedJSON = await normalizedJSON3(mqttmsg);
-
-          const eventName = JSON.parse(normalizedJSON).HMI_ID;
-
-          io.timeout(5000).emit(eventName, normalizedJSON, (err, responses) => {
-            if (err) {
-              // some clients did not acknowledge the event in the given delay
-              console.error(
-                `Emit to event '${eventName}' timed out or failed.`
-              );
-            } else {
-              // all clients responded with an acknowledgment
-              console.log(`Successfully emitted data on event '${eventName}'.`);
-            }
-          });
-
           await sendNormalizedJsonToAwsIotCore(normalizedJSON);
         } else {
           // Protocol document 1 message normalization
           normalizedJSON = await jsonNormalization(mqttmsg);
-          const eventName = JSON.parse(normalizedJSON).HMI_ID;
-
-          io.timeout(5000).emit(eventName, normalizedJSON, (err, responses) => {
-            if (err) {
-              // some clients did not acknowledge the event in the given delay
-              console.error(
-                `Emit to event '${eventName}' timed out or failed.`
-              );
-            } else {
-              // all clients responded with an acknowledgment
-              console.log(`Successfully emitted data on event '${eventName}'.`);
-            }
-          });
           await sendNormalizedJsonToAwsIotCore(normalizedJSON);
         }
       }
@@ -180,6 +131,62 @@ app.delete("/delete-redis-data/:key", async (req, res) => {
   }
 });
 
+// API to receive Socket Data via Lambda after Rule set and broadcast over socketio
+app.post("/send-socket-data", async (req, res) => {
+  const { data } = req.body;
+  console.log("Data :::", data, data.HMI_ID);
+  try {
+    if (data.HMI_ID) {
+      let key = data.HMI_ID;
+      const redisData = await getRedisData(key);
+      const finalDataToSend = socketDataToSend(data, JSON.parse(redisData));
+
+      if (data.event != "LOC") {
+        io.timeout(5000).emit(
+          `${finalDataToSend.org_id.toString()}-Alert`,
+          finalDataToSend.baseObject,
+          (err, responses) => {
+            if (err) {
+              // some clients did not acknowledge the event in the given delay
+              console.error(
+                `Emit to event '${eventName}' timed out or failed.`
+              );
+            } else {
+              // all clients responded with an acknowledgment
+              console.log(`Successfully emitted data on event '${eventName}'.`);
+            }
+          }
+        );
+      } else {
+        io.timeout(5000).emit(
+          `${finalDataToSend.org_id.toString()}`,
+          finalDataToSend.baseObject,
+          (err, responses) => {
+            if (err) {
+              // some clients did not acknowledge the event in the given delay
+              console.error(
+                `Emit to event '${eventName}' timed out or failed.`
+              );
+            } else {
+              // all clients responded with an acknowledgment
+              console.log(`Successfully emitted data on event '${eventName}'.`);
+            }
+          }
+        );
+      }
+
+      res.status(200).json({
+        message: `JSON data for key "${key}" set successfully.`,
+        redisResponse: result,
+      });
+    }
+  } catch (err) {
+    console.log("Failed to set data in redis server!!");
+    res
+      .status(500)
+      .json({ message: "Failed to set data in redis!!", error: err });
+  }
+});
 // Start the server and listen for incoming requests
 httpServer.listen(port, () => {
   console.log(`Listening on port ${port}`);
