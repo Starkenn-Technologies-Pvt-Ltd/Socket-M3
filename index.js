@@ -1,14 +1,18 @@
 const { client } = require("./mqtt");
-const { jsonNormalization } = require("./normalized");
-const { normalizedJSON2 } = require("./normalizedJSON2");
-const { setRedisData, getRedisData, deleteRedisData } = require("./redisCrud");
-const { sendNormalizedJsonToAwsIotCore } = require("./sendiotcore");
+const { jsonNormalization } = require("./Utils/normalized");
+const { normalizedJSON2 } = require("./Utils/normalizedJSON2");
+const {
+  setRedisData,
+  getRedisData,
+  deleteRedisData,
+} = require("./Utils/redisCrud");
+const { sendNormalizedJsonToAwsIotCore } = require("./Utils/sendiotcore");
 const express = require("express");
 const { createServer } = require("https");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const fs = require("fs");
-const { normalizedJSON3 } = require("./normalizeJSON3");
+const { normalizedJSON3 } = require("./Utils/normalizeJSON3");
 
 // Initialize Express app
 const app = express();
