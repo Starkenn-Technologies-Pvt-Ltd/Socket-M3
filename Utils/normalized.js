@@ -33,7 +33,7 @@ const jsonNormalization = (msg) => {
       HMI_trip_status: msg.trip_id ? "1" : "0" || "0",
       spd_wire: msg.data?.speed || "0",
       device_id: msg.device_id || "DMS_0001A",
-      device_type: isCADevice ? "CAS" : "DMS" || "SINGLE_IoT",
+      device_type: "SINGLE_IoT",
       device_trip_status: msg.trip_id || "0",
       device_trip_id: msg.trip_id || "0",
       device_timestamp: msg.timestamp || "1672511400",
@@ -48,16 +48,16 @@ const jsonNormalization = (msg) => {
       driver_status: "1",
       device_data: msg.data || {},
       media: {
-        dashCam: "",
-        inCabin: "",
-        image: "",
+        dashCam: msg.data?.dashcam || "",
+        inCabin: msg.data?.media || "",
+        image: msg.data?.img_url || "",
       },
       JSON_DUMP: JSON.stringify(msg),
     };
 
     //////////////////////////////////   ALM   /////////////////////////////////////////////////////
     if (msg.event === "ALM") {
-      //Alarm Alert Check
+      //Alarm Alert
       if (msg.data.alarm === 3) {
         //ALARM 3
         normalizedJSON.subevent = "ALM3";
@@ -66,6 +66,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.spd_wire = msg.data.speed;
         normalizedJSON.event_status = msg.data.alarm;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alarm === 2) {
@@ -76,6 +77,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.spd_wire = msg.data.speed;
         normalizedJSON.event_status = msg.data.alarm;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alarm === 1) {
@@ -86,6 +88,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.spd_wire = msg.data.speed;
         normalizedJSON.event_status = msg.data.alarm;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       }
@@ -102,9 +105,11 @@ const jsonNormalization = (msg) => {
         normalizedJSON.subevent = "ASV";
         normalizedJSON.severity = "HIGH";
         normalizedJSON.reason = msg.data.reason;
-        normalizedJSON.device_data = msg.data || {};
         normalizedJSON.spd_wire = msg.data.speed;
         normalizedJSON.event_status = msg.data.status;
+        normalizedJSON.device_data = msg.data || {};
+        normalizedJSON.media.dashCam = msg.data.CAS_Dashcam;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else {
@@ -112,9 +117,11 @@ const jsonNormalization = (msg) => {
         normalizedJSON.subevent = "AUB";
         normalizedJSON.severity = "HIGH";
         normalizedJSON.reason = msg.data.reason;
-        normalizedJSON.device_data = msg.data || {};
         normalizedJSON.spd_wire = msg.data.speed;
         normalizedJSON.event_status = msg.data.status;
+        normalizedJSON.device_data = msg.data || {};
+        normalizedJSON.media.dashCam = msg.data.CAS_Dashcam;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       }
@@ -128,6 +135,7 @@ const jsonNormalization = (msg) => {
       normalizedJSON.reason = msg.data.reason;
       normalizedJSON.device_data = msg.data || {};
       normalizedJSON.spd_wire = msg.data.speed;
+      normalizedJSON.device_type = "CAS";
 
       return JSON.stringify(normalizedJSON);
     }
@@ -139,6 +147,7 @@ const jsonNormalization = (msg) => {
       normalizedJSON.event_status = msg.data.status;
       normalizedJSON.reason = msg.data.reason;
       normalizedJSON.device_data = msg.data || {};
+      normalizedJSON.device_type = "CAS";
 
       return JSON.stringify(normalizedJSON);
     }
@@ -149,6 +158,7 @@ const jsonNormalization = (msg) => {
       normalizedJSON.severity = "HIGH";
       normalizedJSON.event_status = msg.data.status;
       normalizedJSON.device_data = msg.data || {};
+      normalizedJSON.device_type = "CAS";
 
       return JSON.stringify(normalizedJSON);
     }
@@ -162,6 +172,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.notification == 2) {
@@ -170,6 +181,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.notification == 3) {
@@ -178,6 +190,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.notification == 4) {
@@ -186,6 +199,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.notification == 5) {
@@ -194,6 +208,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.notification == 6) {
@@ -202,6 +217,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "MEDIUM";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.notification == 7) {
@@ -210,6 +226,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.notification == 15) {
@@ -218,6 +235,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "HIGH";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.notification == 16) {
@@ -226,6 +244,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "HIGH";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.notification == 17) {
@@ -234,6 +253,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "HIGH";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.notification == 18) {
@@ -242,6 +262,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "HIGH";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.notification == 19) {
@@ -250,6 +271,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "HIGH";
         normalizedJSON.event_status = msg.notification;
         normalizedJSON.spd_wire = msg.speed;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else {
@@ -266,6 +288,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type === "DISTRACTION") {
@@ -275,6 +298,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type === "DROWSINESS") {
@@ -284,6 +308,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type === "NO_DRIVER") {
@@ -293,6 +318,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type === "TRIP_START") {
@@ -302,6 +328,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type === "SMOKING") {
@@ -311,6 +338,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type === "YAWNING") {
@@ -320,6 +348,7 @@ const jsonNormalization = (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type === "USING_PHONE") {
@@ -329,6 +358,17 @@ const jsonNormalization = (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
+
+        return JSON.stringify(normalizedJSON);
+      } else if (msg.data.alert_type === "CALIBERATION") {
+        normalizedJSON.subevent = "CAL";
+        normalizedJSON.severity = "LOW";
+        normalizedJSON.spd_wire = msg.data.speed;
+        normalizedJSON.device_data = msg.data || {};
+        normalizedJSON.media.dashCam = msg.data.dashcam;
+        normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else {
@@ -345,7 +385,10 @@ const jsonNormalization = (msg) => {
         normalizedJSON.event_status = msg.data.result;
         normalizedJSON.spd_wire = msg.data.speed;
         normalizedJSON.media.inCabin = msg.data.vid_url;
+        normalizedJSON.media.dashCam = msg.data.img_url;
         normalizedJSON.media.image = msg.data.img_url;
+        normalizedJSON.device_data = msg.data || {};
+        normalizedJSON.device_type = "Alcohol";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.result == 1) {
@@ -355,7 +398,10 @@ const jsonNormalization = (msg) => {
         normalizedJSON.event_status = msg.data.result;
         normalizedJSON.spd_wire = msg.data.speed;
         normalizedJSON.media.inCabin = msg.data.vid_url;
+        normalizedJSON.media.dashCam = msg.data.img_url;
         normalizedJSON.media.image = msg.data.img_url;
+        normalizedJSON.device_data = msg.data || {};
+        normalizedJSON.device_type = "Alcohol";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.dataresult == 3) {
@@ -365,7 +411,10 @@ const jsonNormalization = (msg) => {
         normalizedJSON.event_status = msg.data.result;
         normalizedJSON.spd_wire = msg.data.speed;
         normalizedJSON.media.inCabin = msg.data.vid_url;
+        normalizedJSON.media.dashCam = msg.data.img_url;
         normalizedJSON.media.image = msg.data.img_url;
+        normalizedJSON.device_data = msg.data || {};
+        normalizedJSON.device_type = "Alcohol";
 
         return JSON.stringify(normalizedJSON);
       }
@@ -378,6 +427,7 @@ const jsonNormalization = (msg) => {
       normalizedJSON.event_status = msg.data.status;
       normalizedJSON.device_data = msg.data;
       normalizedJSON.spd_wire = msg.speed;
+      normalizedJSON.device_type = "CAS";
 
       return JSON.stringify(normalizedJSON);
     }
@@ -389,6 +439,7 @@ const jsonNormalization = (msg) => {
       normalizedJSON.event_status = msg.data.status;
       normalizedJSON.device_data = msg.data;
       normalizedJSON.spd_wire = msg.speed;
+      normalizedJSON.device_type = "CAS";
 
       return JSON.stringify(normalizedJSON);
     }
@@ -399,6 +450,7 @@ const jsonNormalization = (msg) => {
       normalizedJSON.severity = "LOW";
       normalizedJSON.device_data = msg.data;
       normalizedJSON.spd_wire = msg.speed;
+      normalizedJSON.device_type = "FUEL";
 
       return JSON.stringify(normalizedJSON);
     }
@@ -409,6 +461,7 @@ const jsonNormalization = (msg) => {
       normalizedJSON.severity = "LOW";
       normalizedJSON.device_data = msg.data;
       normalizedJSON.spd_wire = msg.speed;
+      normalizedJSON.device_type = "LOAD";
 
       return JSON.stringify(normalizedJSON);
     }
@@ -446,6 +499,20 @@ const jsonNormalization = (msg) => {
     ///////////////////////////////////////////  IGS IGNITION  /////////////////////////////////////////////////////
     else if (msg.event == "IGS") {
       normalizedJSON.subevent = "IGS";
+      normalizedJSON.severity = "LOW";
+
+      return JSON.stringify(normalizedJSON);
+    }
+    //Start Trip
+    else if (msg.event == "STR") {
+      normalizedJSON.subevent = "STR";
+      normalizedJSON.severity = "LOW";
+
+      return JSON.stringify(normalizedJSON);
+    }
+    //stop trip
+    else if (msg.event == "STP") {
+      normalizedJSON.subevent = "STP";
       normalizedJSON.severity = "LOW";
 
       return JSON.stringify(normalizedJSON);

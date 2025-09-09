@@ -64,6 +64,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.spd_wire = msg.data.spd;
         normalizedJSON.event_status = msg.data.alm;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alm === 2) {
@@ -74,6 +75,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.spd_wire = msg.data.spd;
         normalizedJSON.event_status = msg.data.alm;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alm === 1) {
@@ -84,6 +86,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.spd_wire = msg.data.spd;
         normalizedJSON.event_status = msg.data.alm;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       }
@@ -103,6 +106,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.spd_wire = msg.data.spd;
         normalizedJSON.event_status = msg.data.sts;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else {
@@ -113,6 +117,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.spd_wire = msg.data.spd;
         normalizedJSON.event_status = msg.data.sts;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       }
@@ -126,6 +131,7 @@ const normalizedJSON2 = async (msg) => {
       normalizedJSON.reason = msg.data.rsn;
       normalizedJSON.device_data = msg.data || {};
       normalizedJSON.spd_wire = msg.data.spd;
+      normalizedJSON.device_type = "CAS";
 
       return JSON.stringify(normalizedJSON);
     }
@@ -137,6 +143,7 @@ const normalizedJSON2 = async (msg) => {
       normalizedJSON.event_status = msg.data.sts;
       normalizedJSON.reason = msg.data.rsn;
       normalizedJSON.device_data = msg.data || {};
+      normalizedJSON.device_type = "CAS";
 
       return JSON.stringify(normalizedJSON);
     }
@@ -147,6 +154,7 @@ const normalizedJSON2 = async (msg) => {
       normalizedJSON.severity = "HIGH";
       normalizedJSON.event_status = msg.data.sts;
       normalizedJSON.device_data = msg.data || {};
+      normalizedJSON.device_type = "CAS";
 
       return JSON.stringify(normalizedJSON);
     }
@@ -160,6 +168,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.ntf == 2) {
@@ -168,6 +177,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.ntf == 3) {
@@ -176,6 +186,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.ntf == 4) {
@@ -184,6 +195,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.ntf == 5) {
@@ -192,6 +204,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.ntf == 6) {
@@ -200,6 +213,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "MEDIUM";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.ntf == 7) {
@@ -208,6 +222,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.ntf == 15) {
@@ -216,6 +231,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "HIGH";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.ntf == 16) {
@@ -224,6 +240,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "HIGH";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.ntf == 17) {
@@ -232,6 +249,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "HIGH";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.ntf == 18) {
@@ -240,6 +258,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "HIGH";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.ntf == 19) {
@@ -248,6 +267,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.severity = "HIGH";
         normalizedJSON.event_status = msg.ntf;
         normalizedJSON.spd_wire = msg.data.spd;
+        normalizedJSON.device_type = "CAS";
 
         return JSON.stringify(normalizedJSON);
       } else {
@@ -264,6 +284,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type == "DISTRACTION") {
@@ -273,6 +294,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type == "DROWSINESS") {
@@ -282,6 +304,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type == "NO_DRIVER") {
@@ -291,6 +314,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type == "TRIP_START") {
@@ -300,6 +324,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type == "SMOKING") {
@@ -309,6 +334,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type == "YAWNING") {
@@ -318,6 +344,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.alert_type == "USING_PHONE") {
@@ -327,6 +354,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.media.dashCam = msg.data.dashcam;
         normalizedJSON.media.inCabin = msg.data.media;
+        normalizedJSON.device_type = "DMS";
 
         return JSON.stringify(normalizedJSON);
       } else {
@@ -341,6 +369,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.subevent = "ALCF";
         normalizedJSON.severity = "HIGH";
         normalizedJSON.event_status = msg.data.sts;
+        normalizedJSON.device_type = "Alcohol";
 
         return JSON.stringify(normalizedJSON);
       } else if (msg.data.sts == 1) {
@@ -348,6 +377,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.subevent = "ALCP";
         normalizedJSON.severity = "LOW";
         normalizedJSON.event_status = msg.data.sts;
+        normalizedJSON.device_type = "Alcohol";
 
         return JSON.stringify(normalizedJSON);
       }
@@ -360,6 +390,7 @@ const normalizedJSON2 = async (msg) => {
       normalizedJSON.event_status = msg.data.status;
       normalizedJSON.device_data = msg.data;
       normalizedJSON.spd_wire = msg.data.spd;
+      normalizedJSON.device_type = "CAS";
 
       return JSON.stringify(normalizedJSON);
     }
@@ -428,6 +459,20 @@ const normalizedJSON2 = async (msg) => {
     ///////////////////////////////////////////  IGS IGNITION  /////////////////////////////////////////////////////
     else if (msg.event == "IGS") {
       normalizedJSON.subevent = "IGS";
+      normalizedJSON.severity = "LOW";
+
+      return JSON.stringify(normalizedJSON);
+    }
+    ///////////////////////////////Start Trip/   ///////////////////////////////////////////////////
+    else if (msg.event == "STR") {
+      normalizedJSON.subevent = "STR";
+      normalizedJSON.severity = "LOW";
+
+      return JSON.stringify(normalizedJSON);
+    }
+    ////////////////////////////////stop trip////////////////////////////////////////////////////////////
+    else if (msg.event == "STP") {
+      normalizedJSON.subevent = "STP";
       normalizedJSON.severity = "LOW";
 
       return JSON.stringify(normalizedJSON);
