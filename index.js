@@ -1,4 +1,4 @@
-const { client } = require("./mqtt");
+const { client } = require("./Utils/mqtt");
 const { jsonNormalization } = require("./Utils/normalized");
 const { normalizedJSON2 } = require("./Utils/normalizedJSON2");
 const {
