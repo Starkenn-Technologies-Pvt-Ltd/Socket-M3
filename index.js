@@ -183,7 +183,10 @@ app.post("/send-socket-data", async (req, res) => {
             socketVals.deviceId == JSON.parse(redisData).HMI_ID &&
             socketVals.validTime >= new Date().getTime()
           ) {
-            if (socketVals.linkType == "alert") {
+            if (
+              socketVals.linkType == "alerts" ||
+              socketVals.linkType == "alert"
+            ) {
               io.timeout(5000).emit(
                 socketVals.uid,
                 finalDataToSend.baseObject,
