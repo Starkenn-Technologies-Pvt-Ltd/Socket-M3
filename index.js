@@ -134,45 +134,96 @@ app.delete("/delete-redis-data/:key", async (req, res) => {
 // API to receive Socket Data via Lambda after Rule set and broadcast over socketio
 app.post("/send-socket-data", async (req, res) => {
   const { data } = req.body;
-  console.log("Data :::", data, data.HMI_ID);
   try {
     if (data.HMI_ID) {
       let key = data.HMI_ID;
       const redisData = await getRedisData(key);
-      const finalDataToSend = socketDataToSend(data, JSON.parse(redisData));
+      if (redisData) {
+        const finalDataToSend = socketDataToSend(data, JSON.parse(redisData));
 
-      if (data.event != "LOC") {
-        io.timeout(5000).emit(
-          `${finalDataToSend.org_id.toString()}-Alert`,
-          finalDataToSend.baseObject,
-          (err, responses) => {
-            if (err) {
-              // some clients did not acknowledge the event in the given delay
-              console.error(
-                `Emit to event '${eventName}' timed out or failed.`
+        if (data.event != "LOC") {
+          io.timeout(5000).emit(
+            `${finalDataToSend.org_id.toString()}-Alert`,
+            finalDataToSend.baseObject,
+            (err, responses) => {
+              if (err) {
+                console.error(
+                  `Emit to event '${eventName}' timed out or failed.`
+                );
+              } else {
+                console.log(
+                  `Successfully emitted data on event '${eventName}'.`
+                );
+              }
+            }
+          );
+        } else {
+          io.timeout(5000).emit(
+            `${finalDataToSend.org_id.toString()}`,
+            finalDataToSend.baseObject,
+            (err, responses) => {
+              if (err) {
+                console.error(
+                  `Emit to event '${eventName}' timed out or failed.`
+                );
+              } else {
+                console.log(
+                  `Successfully emitted data on event '${eventName}'.`
+                );
+              }
+            }
+          );
+        }
+
+        let socketkeys = await getRedisData("socket");
+        socketkeys = JSON.parse(socketkeys);
+
+        socketkeys.map((socketVals) => {
+          if (
+            socketVals.deviceId == JSON.parse(redisData).HMI_ID &&
+            socketVals.validTime >= new Date().getTime()
+          ) {
+            if (socketVals.linkType == "alert") {
+              io.timeout(5000).emit(
+                socketVals.uid,
+                finalDataToSend.baseObject,
+                (err) => {
+                  if (err) {
+                    console.error(
+                      `Emit to event '${eventName}' timed out or failed.`
+                    );
+                  }
+                }
               );
             } else {
-              // all clients responded with an acknowledgment
-              console.log(`Successfully emitted data on event '${eventName}'.`);
+              if (finalDataToSend.baseObject.event == "LOC") {
+                io.timeout(5000).emit(
+                  socketVals.uid,
+                  finalDataToSend.baseObject,
+                  (err) => {
+                    if (err) {
+                      console.error(
+                        `Emit to event '${eventName}' timed out or failed.`
+                      );
+                    }
+                  }
+                );
+              }
             }
+          } else {
+            io.timeout(5000).emit(
+              socketVals.uid,
+              { error: true, message: "Link Expired" },
+              (err) => {
+                if (err) {
+                  console.error(
+                    `Emit to event '${eventName}' timed out or failed.`
+                  );
+                }
+              }
+            );
           }
-        );
-      } else {
-        io.timeout(5000).emit(
-          `${finalDataToSend.org_id.toString()}`,
-          finalDataToSend.baseObject,
-          (err, responses) => {
-            if (err) {
-              // some clients did not acknowledge the event in the given delay
-              console.error(
-                `Emit to event '${eventName}' timed out or failed.`
-              );
-            } else {
-              // all clients responded with an acknowledgment
-              console.log(`Successfully emitted data on event '${eventName}'.`);
-            }
-          }
-        );
+        });
       }
 
       res.status(200).json({
