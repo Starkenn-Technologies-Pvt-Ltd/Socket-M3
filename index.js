@@ -148,11 +148,11 @@ app.post("/send-socket-data", async (req, res) => {
             (err, responses) => {
               if (err) {
                 console.error(
-                  `Emit to event '${eventName}' timed out or failed.`
+                  `Emit to event '${finalDataToSend.org_id.toString()}-Alert}' timed out or failed.`
                 );
               } else {
                 console.log(
-                  `Successfully emitted data on event '${eventName}'.`
+                  `Successfully emitted data on event '${finalDataToSend.org_id.toString()}-Alert}'.`
                 );
               }
             }
@@ -164,11 +164,11 @@ app.post("/send-socket-data", async (req, res) => {
             (err, responses) => {
               if (err) {
                 console.error(
-                  `Emit to event '${eventName}' timed out or failed.`
+                  `Emit to event '${finalDataToSend.org_id.toString()}' timed out or failed.`
                 );
               } else {
                 console.log(
-                  `Successfully emitted data on event '${eventName}'.`
+                  `Successfully emitted data on event '${finalDataToSend.org_id.toString()}'.`
                 );
               }
             }
@@ -190,7 +190,7 @@ app.post("/send-socket-data", async (req, res) => {
                 (err) => {
                   if (err) {
                     console.error(
-                      `Emit to event '${eventName}' timed out or failed.`
+                      `Emit to event '${socketVals.uid}' timed out or failed.`
                     );
                   }
                 }
@@ -203,7 +203,7 @@ app.post("/send-socket-data", async (req, res) => {
                   (err) => {
                     if (err) {
                       console.error(
-                        `Emit to event '${eventName}' timed out or failed.`
+                        `Emit to event '${socketVals.uid}' timed out or failed.`
                       );
                     }
                   }
@@ -217,7 +217,7 @@ app.post("/send-socket-data", async (req, res) => {
               (err) => {
                 if (err) {
                   console.error(
-                    `Emit to event '${eventName}' timed out or failed.`
+                    `Emit to event '${socketVals.uid}' timed out or failed.`
                   );
                 }
               }
@@ -227,15 +227,14 @@ app.post("/send-socket-data", async (req, res) => {
       }
 
       res.status(200).json({
-        message: `JSON data for key "${key}" set successfully.`,
-        redisResponse: result,
+        message: `Success.`,
       });
     }
   } catch (err) {
-    console.log("Failed to set data in redis server!!");
+    console.log("Catch Error :::::", err);
     res
       .status(500)
-      .json({ message: "Failed to set data in redis!!", error: err });
+      .json({ message: "Failed to send Data on Socket!!", error: err });
   }
 });
 // Start the server and listen for incoming requests

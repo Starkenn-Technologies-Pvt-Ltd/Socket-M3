@@ -5,8 +5,8 @@ const socketDataToSend = (mqttPayload, redisPayload) => {
     delete baseObject.JSON_DUMP;
     delete baseObject.device_data;
     baseObject.vehicle_status = redisPayload.vehicle_Data.vehicle_status;
+    return { baseObject, org_id: redisPayload.vehicle_Data.org_id };
   }
-  return { baseObject, org_id: redisPayload.vehicle_Data.org_id };
 };
 
 module.exports = { socketDataToSend };
