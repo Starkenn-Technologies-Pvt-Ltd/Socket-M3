@@ -58,12 +58,12 @@ const mqttTrigger = () => {
         console.log("Subscribed to the topic");
       }
     });
-  }); //////////////////////  Mqtt message sent to iotcore ///////////////////////////// // Event listener for incoming MQTT messages
+  }); //////////////////////  Mqtt message sent to iotcore ///////////////////////////// // Event listener for incoming MQTT messages
 
   client.on("message", async (topic, message) => {
     try {
       if (message) {
-        let mqttmsg = JSON.parse(message.toString());
+        let mqttmsg = JSON.parse(message);
         let normalizedJSON; // Check message version for different normalization protocols
         if (mqttmsg?.ver === "JSON_2.0") {
           // Normalize using protocol 2.0
@@ -137,38 +137,49 @@ app.post("/send-socket-data", async (req, res) => {
   try {
     if (data.HMI_ID) {
       let key = data.HMI_ID;
+      console.log(
+        "-----------------------------------------------------------------------"
+      );
       const redisData = await getRedisData(key);
       if (redisData) {
         const finalDataToSend = socketDataToSend(data, JSON.parse(redisData));
-
+        console.log(
+          "Final data to send ::::::::::::",
+          finalDataToSend.org_id,
+          " | key : ",
+          key
+        );
+        console.log(
+          "------------------------------------------------------------------------"
+        );
         if (data.event != "LOC") {
           io.timeout(5000).emit(
-            `${finalDataToSend.org_id.toString()}-Alert`,
+            `${finalDataToSend.org_id}-Alert`,
             finalDataToSend.baseObject,
             (err, responses) => {
               if (err) {
                 console.error(
-                  `Emit to event '${finalDataToSend.org_id.toString()}-Alert}' timed out or failed.`
+                  `Emit to event '${finalDataToSend.org_id}-Alert' timed out or failed.`
                 );
               } else {
                 console.log(
-                  `Successfully emitted data on event '${finalDataToSend.org_id.toString()}-Alert}'.`
+                  `Successfully emitted data on event '${finalDataToSend.org_id}-Alert'.`
                 );
               }
             }
           );
         } else {
           io.timeout(5000).emit(
-            `${finalDataToSend.org_id.toString()}`,
+            `${finalDataToSend.org_id}`,
             finalDataToSend.baseObject,
             (err, responses) => {
               if (err) {
                 console.error(
-                  `Emit to event '${finalDataToSend.org_id.toString()}' timed out or failed.`
+                  `Emit to event '${finalDataToSend.org_id}' timed out or failed.`
                 );
               } else {
                 console.log(
-                  `Successfully emitted data on event '${finalDataToSend.org_id.toString()}'.`
+                  `Successfully emitted data on event '${finalDataToSend.org_id}'.`
                 );
               }
             }
@@ -177,15 +188,28 @@ app.post("/send-socket-data", async (req, res) => {
 
         let socketkeys = await getRedisData("socket");
         socketkeys = JSON.parse(socketkeys);
-
         socketkeys.map((socketVals) => {
           if (
-            socketVals.deviceId == JSON.parse(redisData).HMI_ID &&
-            socketVals.validTime >= new Date().getTime()
+            socketVals.device_id == JSON.parse(redisData).HMI_Id &&
+            socketVals.valid_time >= new Date().getTime()
           ) {
+            console.log(
+              "------------------------------------|||||||||||||--------------------------------------"
+            );
+            console.log(
+              "Share Trip Data ::::::::: ",
+              socketVals.link_type,
+              " :::::::::::: ",
+              socketVals.valid_time >= new Date().getTime(),
+              " | Topic ::::",
+              socketVals.uid
+            );
+            console.log(
+              "------------------------------------|||||||||||||--------------------------------------"
+            );
             if (
-              socketVals.linkType == "alerts" ||
-              socketVals.linkType == "alert"
+              socketVals.link_type == "alert" ||
+              socketVals.link_type == "alerts"
             ) {
               io.timeout(5000).emit(
                 socketVals.uid,
@@ -214,30 +238,32 @@ app.post("/send-socket-data", async (req, res) => {
               }
             }
           } else {
-            io.timeout(5000).emit(
-              socketVals.uid,
-              { error: true, message: "Link Expired" },
-              (err) => {
-                if (err) {
-                  console.error(
-                    `Emit to event '${socketVals.uid}' timed out or failed.`
-                  );
+            if (socketVals.validTime <= new Date().getTime()) {
+              io.timeout(5000).emit(
+                socketVals.uid,
+                { error: true, message: "Link Expired" },
+                (err) => {
+                  if (err) {
+                    console.error(
+                      `Emit to event '${eventName}' timed out or failed.`
+                    );
+                  }
                 }
-              }
-            );
+              );
+            }
           }
         });
       }
 
       res.status(200).json({
-        message: `Success.`,
+        message: `Success`,
       });
     }
   } catch (err) {
-    console.log("Catch Error :::::", err);
+    console.log("Failed to send data on socket !!", err);
     res
       .status(500)
-      .json({ message: "Failed to send Data on Socket!!", error: err });
+      .json({ message: "Failed to send data on socket!!", error: err });
   }
 });
 // Start the server and listen for incoming requests
