@@ -17,10 +17,11 @@ async function getRedisData(key) {
 
     if (value !== null) {
       console.log(`Redis: Successfully retrieved key "${key}"`);
+      return value;
     } else {
       console.log(`Redis: Key "${key}" not found.`);
+      return false;
     }
-    return value;
   } catch (error) {
     console.error(`Redis: Error getting data for key "${key}":`, error);
     throw error;

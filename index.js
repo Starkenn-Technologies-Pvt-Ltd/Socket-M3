@@ -137,6 +137,13 @@ app.post("/send-socket-data", async (req, res) => {
   try {
     if (data.HMI_ID) {
       let key = data.HMI_ID;
+      if (key == "undefined") {
+        console.log(
+          "|||||||||||||||||||||||||||||||||||||||||| ",
+          data,
+          " |||||||||||||||||||||||||||||||||||||||||||||"
+        );
+      }
       console.log(
         "-----------------------------------------------------------------------"
       );
@@ -152,78 +159,70 @@ app.post("/send-socket-data", async (req, res) => {
         console.log(
           "------------------------------------------------------------------------"
         );
-        if (data.event != "LOC") {
-          io.timeout(5000).emit(
-            `${finalDataToSend.org_id}-Alert`,
-            finalDataToSend.baseObject,
-            (err, responses) => {
-              if (err) {
-                console.error(
-                  `Emit to event '${finalDataToSend.org_id}-Alert' timed out or failed.`
-                );
-              } else {
-                console.log(
-                  `Successfully emitted data on event '${finalDataToSend.org_id}-Alert'.`
-                );
+        if (finalDataToSend.org_id) {
+          if (data.event != "LOC") {
+            io.timeout(5000).emit(
+              `${finalDataToSend.org_id}-Alert`,
+              finalDataToSend.baseObject,
+              (err, responses) => {
+                if (err) {
+                  console.error(
+                    `Emit to event '${finalDataToSend.org_id}-Alert' timed out or failed.`
+                  );
+                } else {
+                  console.log(
+                    `Successfully emitted data on event '${finalDataToSend.org_id}-Alert'.`
+                  );
+                }
               }
-            }
-          );
-        } else {
-          io.timeout(5000).emit(
-            `${finalDataToSend.org_id}`,
-            finalDataToSend.baseObject,
-            (err, responses) => {
-              if (err) {
-                console.error(
-                  `Emit to event '${finalDataToSend.org_id}' timed out or failed.`
-                );
-              } else {
-                console.log(
-                  `Successfully emitted data on event '${finalDataToSend.org_id}'.`
-                );
+            );
+          } else {
+            io.timeout(5000).emit(
+              `${finalDataToSend.org_id}`,
+              finalDataToSend.baseObject,
+              (err, responses) => {
+                if (err) {
+                  console.error(
+                    `Emit to event '${finalDataToSend.org_id}' timed out or failed.`
+                  );
+                } else {
+                  console.log(
+                    `Successfully emitted data on event '${finalDataToSend.org_id}'.`
+                  );
+                }
               }
-            }
-          );
+            );
+          }
         }
 
         let socketkeys = await getRedisData("socket");
         socketkeys = JSON.parse(socketkeys);
-        socketkeys.map((socketVals) => {
-          if (
-            socketVals.device_id == JSON.parse(redisData).HMI_Id &&
-            socketVals.valid_time >= new Date().getTime()
-          ) {
-            console.log(
-              "------------------------------------|||||||||||||--------------------------------------"
-            );
-            console.log(
-              "Share Trip Data ::::::::: ",
-              socketVals.link_type,
-              " :::::::::::: ",
-              socketVals.valid_time >= new Date().getTime(),
-              " | Topic ::::",
-              socketVals.uid
-            );
-            console.log(
-              "------------------------------------|||||||||||||--------------------------------------"
-            );
+
+        if (socketkeys.length) {
+          socketkeys.map((socketVals) => {
             if (
-              socketVals.link_type == "alert" ||
-              socketVals.link_type == "alerts"
+              socketVals.device_id == JSON.parse(redisData).HMI_Id &&
+              socketVals.valid_time >= new Date().getTime()
             ) {
-              io.timeout(5000).emit(
-                socketVals.uid,
-                finalDataToSend.baseObject,
-                (err) => {
-                  if (err) {
-                    console.error(
-                      `Emit to event '${socketVals.uid}' timed out or failed.`
-                    );
-                  }
-                }
+              console.log(
+                "------------------------------------|||||||||||||--------------------------------------"
               );
-            } else {
-              if (finalDataToSend.baseObject.event == "LOC") {
+              console.log(
+                "Share Trip Data ::::::::: ",
+                socketVals.link_type,
+                " :::::::::::: ",
+                socketVals.valid_time >= new Date().getTime(),
+                " | Topic ::::",
+                socketVals.uid,
+                " | "
+              );
+              console.log(
+                "------------------------------------|||||||||||||--------------------------------------"
+              );
+              if (
+                socketVals.link_type == "alert" ||
+                socketVals.link_type == "alerts"
+              ) {
                 io.timeout(5000).emit(
                   socketVals.uid,
                   finalDataToSend.baseObject,
@@ -235,24 +234,38 @@ app.post("/send-socket-data", async (req, res) => {
                     }
                   }
                 );
+              } else {
+                if (finalDataToSend.baseObject.event == "LOC") {
+                  io.timeout(5000).emit(
+                    socketVals.uid,
+                    finalDataToSend.baseObject,
+                    (err) => {
+                      if (err) {
+                        console.error(
+                          `Emit to event '${socketVals.uid}' timed out or failed.`
+                        );
+                      }
+                    }
+                  );
+                }
+              }
+            } else {
+              if (socketVals.validTime <= new Date().getTime()) {
+                io.timeout(5000).emit(
+                  socketVals.uid,
+                  { error: true, message: "Link Expired" },
+                  (err) => {
+                    if (err) {
+                      console.error(
+                        `Emit to event '${eventName}' timed out or failed.`
+                      );
+                    }
+                  }
+                );
               }
             }
-          } else {
-            if (socketVals.validTime <= new Date().getTime()) {
-              io.timeout(5000).emit(
-                socketVals.uid,
-                { error: true, message: "Link Expired" },
-                (err) => {
-                  if (err) {
-                    console.error(
-                      `Emit to event '${eventName}' timed out or failed.`
-                    );
-                  }
-                }
-              );
-            }
-          }
-        });
+          });
+        }
       }
 
       res.status(200).json({
