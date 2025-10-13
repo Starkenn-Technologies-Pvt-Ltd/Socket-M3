@@ -177,6 +177,27 @@ app.post("/send-socket-data", async (req, res) => {
               }
             );
           } else {
+            if (
+              (data.event == "LOC" && parseInt(data.spd_gps) == 0) ||
+              parseInt(data.spd_wire == "0")
+            ) {
+              finalDataToSend.baseObject.subevent = "FLOC";
+              io.timeout(5000).emit(
+                `${finalDataToSend.org_id}`,
+                finalDataToSend.baseObject,
+                (err, responses) => {
+                  if (err) {
+                    console.error(
+                      `Emit to event '${finalDataToSend.org_id}' timed out or failed.`
+                    );
+                  } else {
+                    console.log(
+                      `Successfully emitted data on event '${finalDataToSend.org_id}'.`
+                    );
+                  }
+                }
+              );
+            }
             io.timeout(5000).emit(
               `${finalDataToSend.org_id}`,
               finalDataToSend.baseObject,

@@ -3,6 +3,12 @@ const ChecknNotify = (allData) => {
   // Check any Alert trigger
   // If yes, check conditions and update Redis + add record in QuestDB + Call Email/Whatsapp
   // If no - Do Nothing
+  if (allData.Alert_Triggers.length) {
+    if (allData.Alert_Triggers.length > 1) {
+      if (allData.Alert_Triggers[0].triggerId) {
+      }
+    }
+  }
 };
 
 module.exports = { ChecknNotify };
