@@ -14,6 +14,9 @@ const cors = require("cors");
 const fs = require("fs");
 const { normalizedJSON3 } = require("./Utils/normalizeJSON3");
 const { socketDataToSend } = require("./Utils/socketDataToSend");
+const { saveInvalidToQuest, getFromQuest } = require("./Utils/saveToQuest");
+const { sendToTele } = require("./Utils/sendToTelegram");
+const { eventName } = require("./Utils/eventName");
 
 // Initialize Express app
 const app = express();
@@ -74,8 +77,11 @@ const mqttTrigger = () => {
           normalizedJSON = await jsonNormalization(mqttmsg);
           await sendNormalizedJsonToAwsIotCore(normalizedJSON);
         }
+      } else {
+        saveInvalidToQuest(message, topic);
       }
     } catch (err) {
+      saveInvalidToQuest(message, topic);
       console.error("Error processing MQTT message:", err);
     }
   });
@@ -149,6 +155,13 @@ app.post("/send-socket-data", async (req, res) => {
       );
       const redisData = await getRedisData(key);
       if (redisData) {
+        const orgDetails = await getRedisData("telegramOrg");
+        let orgName = JSON.parse(orgDetails).filter(
+          (d) => d.orgId == JSON.parse(redisData).vehicle_Data.org_id
+        );
+        if (orgName && orgName.length) {
+          orgName = orgName[0];
+        }
         const finalDataToSend = socketDataToSend(data, JSON.parse(redisData));
         console.log(
           "Final data to send ::::::::::::",
@@ -162,7 +175,7 @@ app.post("/send-socket-data", async (req, res) => {
         if (finalDataToSend.org_id) {
           if (data.event != "LOC") {
             io.timeout(5000).emit(
-              `${finalDataToSend.org_id}-Alert`,
+              `${finalDataToSend.org_id}Alert`,
               finalDataToSend.baseObject,
               (err, responses) => {
                 if (err) {
@@ -176,28 +189,73 @@ app.post("/send-socket-data", async (req, res) => {
                 }
               }
             );
-          } else {
+
             if (
-              (data.event == "LOC" && parseInt(data.spd_gps) == 0) ||
-              parseInt(data.spd_wire == "0")
+              [
+                "LMP",
+                "ALCF",
+                "ACD",
+                "AUB",
+                "BYP",
+                "ACC",
+                "DROW",
+                "DIS",
+                "NODR",
+                "DMSO",
+                "CAO",
+                "ALM3",
+                "ALCP",
+              ].includes(data.subevent)
             ) {
-              finalDataToSend.baseObject.subevent = "FLOC";
-              io.timeout(5000).emit(
-                `${finalDataToSend.org_id}`,
-                finalDataToSend.baseObject,
-                (err, responses) => {
-                  if (err) {
-                    console.error(
-                      `Emit to event '${finalDataToSend.org_id}' timed out or failed.`
-                    );
-                  } else {
-                    console.log(
-                      `Successfully emitted data on event '${finalDataToSend.org_id}'.`
-                    );
-                  }
-                }
+              console.log(
+                "TELEGRAM :::",
+                orgName,
+                " | ",
+                eventName(data.subevent).eventNameToSend
+              );
+              let logId = null;
+              let videoLink = data.media.inCabin
+                ? data.media.inCabin
+                : data.media.dashCam
+                ? data.media.dashCam
+                : data.media.image
+                ? data.media.image
+                : null;
+              if (videoLink) {
+                logId = await getFromQuest(
+                  data.device_id,
+                  data.device_timestamp
+                );
+              }
+
+              sendToTele(
+                orgName.chatId ? orgName.chatId : null,
+                `${JSON.parse(redisData).vehicle_Data.Registration_No}`,
+                eventName(data.subevent).eventNameToSend,
+                data.media.inCabin
+                  ? `https://svc-dms.s3.ap-south-1.amazonaws.com/${data.media.inCabin}`
+                  : null,
+                data.media.dashCam
+                  ? `https://svc-dms.s3.ap-south-1.amazonaws.com/${data.media.dashCam}`
+                  : null,
+                data.media.image
+                  ? `https://svc-dms.s3.ap-south-1.amazonaws.com/${data.media.image}`
+                  : null,
+                data.reason,
+                // parseInt(`${data.device_timestamp}000`),
+                new Date(
+                  parseInt(`${data.device_timestamp}000`)
+                ).toLocaleString("en-IN", {
+                  timeZone: "Asia/Kolkata",
+                }),
+                orgName ? orgName.orgName : finalDataToSend.org_id,
+                data.spd_wire ? data.spd_wire : data.spd_gps,
+                logId,
+                data.lat,
+                data.lng
               );
             }
+          } else {
             io.timeout(5000).emit(
               `${finalDataToSend.org_id}`,
               finalDataToSend.baseObject,
@@ -271,6 +329,28 @@ app.post("/send-socket-data", async (req, res) => {
                 }
               }
             } else {
+              if (
+                (data.event == "LOC" && parseInt(data.spd_gps) == 0) ||
+                parseInt(data.spd_wire == "0")
+              ) {
+                finalDataToSend.baseObject.subevent = "FLOC";
+                io.timeout(5000).emit(
+                  `${finalDataToSend.org_id}`,
+                  finalDataToSend.baseObject,
+                  (err, responses) => {
+                    if (err) {
+                      console.error(
+                        `Emit to event '${finalDataToSend.org_id}' timed out or failed.`
+                      );
+                    } else {
+                      console.log(
+                        `Successfully emitted data on event '${finalDataToSend.org_id}'.`
+                      );
+                    }
+                  }
+                );
+              }
+
               if (socketVals.validTime <= new Date().getTime()) {
                 io.timeout(5000).emit(
                   socketVals.uid,
