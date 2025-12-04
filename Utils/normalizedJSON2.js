@@ -376,7 +376,7 @@ const normalizedJSON2 = async (msg) => {
         normalizedJSON.reason = "Driver is Using Phone!";
 
         return JSON.stringify(normalizedJSON);
-      } else if (msg.data.alert_type === "CALIBERATION") {
+      } else if (msg.data.alert_type === "CALIBRATION") {
         normalizedJSON.subevent = "CAL";
         normalizedJSON.severity = "LOW";
         normalizedJSON.spd_wire = msg.data.speed;

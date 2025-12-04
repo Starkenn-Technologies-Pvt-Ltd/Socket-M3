@@ -18,6 +18,7 @@ let messageSelector = (
   if (alert == "FLOC") {
     reason = "No Speed Moment";
   }
+
   msgToSend.text = `<b>🚨 ${alert} Alert 🚨</b>
 🚛 Vehicle : <b>${vehicle_id}</b>
 📝 Reason : <b>${reason}</b>
@@ -26,6 +27,7 @@ let messageSelector = (
   } km/hr</b>
 🕒 On : <i>${timestamp}</i>
 ${org ? "🏢 : " + org : ""}`;
+
   let media = [];
 
   media.push({
@@ -99,6 +101,8 @@ const sendToTele = async (
       "Content-Type": "application/json",
     },
   };
+
+  console.log("Chats To Send ::::", toSend, toSend.length);
 
   toSend.map((chatId) => {
     if (chatId == "-1003107230358") {

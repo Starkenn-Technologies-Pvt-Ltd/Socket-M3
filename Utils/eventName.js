@@ -2,108 +2,90 @@ const eventName = (subEvent) => {
   let eventNameToSend = "";
   let color = "";
   let deviceType = "";
-  let emoji = "";
   if (subEvent == "NTF") {
     eventNameToSend = "Notifications";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚧";
   }
   if (subEvent == "ALM") {
     eventNameToSend = "Alarm";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "ALM1") {
     eventNameToSend = "Alarm 1";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "ALM2") {
     eventNameToSend = "Alarm 2";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "ALM3") {
     eventNameToSend = "Alarm 3";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "BRK") {
     eventNameToSend = "Brake";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "ASV") {
     eventNameToSend = "Accident Saved";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "AUB") {
     eventNameToSend = "Auto Braking";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "ACC") {
     eventNameToSend = "Acceleration Cut Off";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "LMP") {
     eventNameToSend = "Limp Mode";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "ACD") {
     eventNameToSend = "Accident";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "SAF") {
     eventNameToSend = "Safe Zone";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "HRA") {
     eventNameToSend = "Harsh Acceleration";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "SUB") {
     eventNameToSend = "Sudden Braking";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "SPB") {
     eventNameToSend = "Speed Bump";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "LCH") {
     eventNameToSend = "Lane Change";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "TAL") {
     eventNameToSend = "Tailgating";
     color = "#9050E9";
     deviceType = "CAS";
-    emoji = "🚨";
   }
   if (subEvent == "CAO") {
     eventNameToSend = "CAS Overspeed";
@@ -248,11 +230,6 @@ const eventName = (subEvent) => {
   }
   if (subEvent == "IGS") {
     eventNameToSend = "Ignition";
-    color = "#F59E0B";
-    deviceType = "CAS";
-  }
-  if (subEvent == "FLOC") {
-    eventNameToSend = "No Speed Moment";
     color = "#F59E0B";
     deviceType = "CAS";
   }

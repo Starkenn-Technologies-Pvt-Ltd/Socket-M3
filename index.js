@@ -173,7 +173,11 @@ app.post("/send-socket-data", async (req, res) => {
           "------------------------------------------------------------------------"
         );
         if (finalDataToSend.org_id) {
-          if (data.event != "LOC") {
+          if (
+            data.event != "LOC" &&
+            data.event != "LDS" &&
+            data.event != "FLS"
+          ) {
             io.timeout(5000).emit(
               `${finalDataToSend.org_id}Alert`,
               finalDataToSend.baseObject,
@@ -204,15 +208,8 @@ app.post("/send-socket-data", async (req, res) => {
                 "DMSO",
                 "CAO",
                 "ALM3",
-                "ALCP",
               ].includes(data.subevent)
             ) {
-              console.log(
-                "TELEGRAM :::",
-                orgName,
-                " | ",
-                eventName(data.subevent).eventNameToSend
-              );
               let logId = null;
               let videoLink = data.media.inCabin
                 ? data.media.inCabin
@@ -226,19 +223,25 @@ app.post("/send-socket-data", async (req, res) => {
                   data.device_id,
                   data.device_timestamp
                 );
+                logId = logId.id;
               }
-
+              console.log(
+                "TELEGRAM :::",
+                orgName,
+                " | ",
+                eventName(data.subevent).eventNameToSend
+              );
               sendToTele(
                 orgName.chatId ? orgName.chatId : null,
                 `${JSON.parse(redisData).vehicle_Data.Registration_No}`,
                 eventName(data.subevent).eventNameToSend,
-                data.media.inCabin
+                data.media.inCabin && !data.media.inCabin.startsWith("/var")
                   ? `https://svc-dms.s3.ap-south-1.amazonaws.com/${data.media.inCabin}`
                   : null,
-                data.media.dashCam
+                data.media.dashCam && !data.media.dashCam.startsWith("/var")
                   ? `https://svc-dms.s3.ap-south-1.amazonaws.com/${data.media.dashCam}`
                   : null,
-                data.media.image
+                data.media.image && data.media.image.startsWith("/var")
                   ? `https://svc-dms.s3.ap-south-1.amazonaws.com/${data.media.image}`
                   : null,
                 data.reason,
@@ -249,28 +252,30 @@ app.post("/send-socket-data", async (req, res) => {
                   timeZone: "Asia/Kolkata",
                 }),
                 orgName ? orgName.orgName : finalDataToSend.org_id,
-                data.spd_wire ? data.spd_wire : data.spd_gps,
+                data.spd_wire ? data.spd_wire : data.spd_gps ? data.spd_gps : 0,
                 logId,
                 data.lat,
                 data.lng
               );
             }
           } else {
-            io.timeout(5000).emit(
-              `${finalDataToSend.org_id}`,
-              finalDataToSend.baseObject,
-              (err, responses) => {
-                if (err) {
-                  console.error(
-                    `Emit to event '${finalDataToSend.org_id}' timed out or failed.`
-                  );
-                } else {
-                  console.log(
-                    `Successfully emitted data on event '${finalDataToSend.org_id}'.`
-                  );
+            if (data.event == "LOC") {
+              io.timeout(5000).emit(
+                `${finalDataToSend.org_id}`,
+                finalDataToSend.baseObject,
+                (err, responses) => {
+                  if (err) {
+                    console.error(
+                      `Emit to event '${finalDataToSend.org_id}' timed out or failed.`
+                    );
+                  } else {
+                    console.log(
+                      `Successfully emitted data on event '${finalDataToSend.org_id}'.`
+                    );
+                  }
                 }
-              }
-            );
+              );
+            }
           }
         }
 

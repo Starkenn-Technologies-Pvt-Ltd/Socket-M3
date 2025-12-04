@@ -3,7 +3,7 @@ const redis = require("./redisConnection"); // Import the Redis client from redi
 async function setRedisData(key, value) {
   try {
     const result = await redis.set(key, value);
-    console.log(`Redis: Successfully set key "${key}"`);
+    //    console.log(`Redis: Successfully set key "${key}"`);
     return result;
   } catch (error) {
     console.error(`Redis: Error setting data for key "${key}":`, error);
@@ -16,10 +16,10 @@ async function getRedisData(key) {
     const value = await redis.get(key);
 
     if (value !== null) {
-      console.log(`Redis: Successfully retrieved key "${key}"`);
+      //      console.log(`Redis: Successfully retrieved key "${key}"`);
       return value;
     } else {
-      console.log(`Redis: Key "${key}" not found.`);
+      //      console.log(`Redis: Key "${key}" not found.`);
       return false;
     }
   } catch (error) {
