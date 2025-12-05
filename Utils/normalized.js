@@ -293,8 +293,8 @@ const jsonNormalization = (msg) => {
         normalizedJSON.severity = "HIGH";
         normalizedJSON.reason =
           msg.data.reason == 0
-            ? "Accident saved due to Collision avoidance system"
-            : "Accident saved due to Sleep alert missed";
+            ? "Automatic braking due to Collision avoidance system"
+            : "Automatic braking due to Sleep alert missed";
         normalizedJSON.spd_wire = msg.data.speed;
         normalizedJSON.event_status = msg.data.status;
         normalizedJSON.device_data = msg.data || {};
