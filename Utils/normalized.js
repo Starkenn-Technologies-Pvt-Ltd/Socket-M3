@@ -56,24 +56,24 @@ const jsonNormalization = (msg) => {
       1: "Sleep Alert",
       2: "Over Speed",
       3: "No Alarm",
-      4: "Speed Pulses Absent",
+      4: "Speed Pulses",
       5: "Accelerator Bypassed",
-      6: "Sensor Absent",
-      7: "Gyroscope Absent",
-      8: "HMI Absent",
+      6: "Sensor",
+      7: "Gyroscope",
+      8: "HMI",
       9: "RTC Error",
       10: "Brake Cylinder Error",
-      11: "TPMS Absent",
-      12: "OBD Absent",
-      13: "RFID Absent",
-      14: "Leddar Absent",
-      15: "IOT Absent",
-      16: "Fuel Board Absent",
-      17: "DD Module Absent",
-      18: "Alcohol Sensor Absent",
-      19: "Temp Sensor Absent",
-      20: "DMS Board Absent",
-      21: "Load Board Absent",
+      11: "TPMS",
+      12: "OBD",
+      13: "RFID",
+      14: "Leddar",
+      15: "IOT",
+      16: "Fuel Board",
+      17: "DD Module",
+      18: "Alcohol Sensor",
+      19: "Temp Sensor",
+      20: "DMS Board",
+      21: "Load Board",
       22: "Overload",
       23: "Fuel Theft",
       24: "Acc Cut due to drowsiness",
@@ -88,24 +88,24 @@ const jsonNormalization = (msg) => {
       1: "Sleep Alert",
       2: "Over Speed",
       3: "No Alarm",
-      4: "Speed Pulses Absent",
+      4: "Speed Pulses",
       5: "Accelerator Bypassed",
-      6: "Sensor Absent",
-      7: "Gyroscope Absent",
-      8: "HMI Absent",
+      6: "Sensor",
+      7: "Gyroscope ",
+      8: "HMI",
       9: "RTC Error",
       10: "Brake Cylinder Error",
-      11: "TPMS Absent",
-      12: "OBD Absent",
-      13: "RFID Absent",
-      14: "Leddar Absent",
-      15: "IOT Absent",
-      16: "Fuel Board Absent",
-      17: "DD Module Absent",
-      18: "Alcohol Sensor Absent",
-      19: "Temp Sensor Absent",
-      20: "DMS Board Absent",
-      21: "Load Board Absent",
+      11: "TPMS",
+      12: "OBD",
+      13: "RFID",
+      14: "Leddar",
+      15: "IOT",
+      16: "Fuel Board",
+      17: "DD Module",
+      18: "Alcohol Sensor",
+      19: "Temp Sensor",
+      20: "DMS Board",
+      21: "Load Board",
     };
 
     const ACD_STATUS_MAP = {
@@ -350,11 +350,10 @@ const jsonNormalization = (msg) => {
 
       if (msg.data.status == 0) {
         finalReasonText =
-          "LIMP Mode has been **Deactivated**; reason for initial entry: " +
+          "LIMP Mode has been Deactivated; reason for initial entry: " +
           reasonDetail;
       } else if (msg.data.status == 1) {
-        finalReasonText =
-          "LIMP Mode is **Active** due to reason: " + reasonDetail;
+        finalReasonText = "LIMP Mode is Active due to reason: " + reasonDetail;
       } else {
         finalReasonText = "LIMP Mode Event!";
       }

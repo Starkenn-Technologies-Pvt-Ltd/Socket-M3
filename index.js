@@ -67,7 +67,7 @@ const mqttTrigger = () => {
     try {
       if (message) {
         let mqttmsg = JSON.parse(message);
-        let normalizedJSON; // Check message version for different normalization protocols
+        let normalizedJSON;
         if (mqttmsg?.ver === "JSON_2.0") {
           // Normalize using protocol 2.0
           normalizedJSON = await normalizedJSON2(mqttmsg);
