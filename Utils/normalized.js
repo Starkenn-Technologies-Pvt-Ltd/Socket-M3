@@ -322,10 +322,10 @@ const jsonNormalization = (msg) => {
 
       if (msg.data.status == 0) {
         finalReasonText =
-          "Accelerator is Turned ON due to reason: " + reasonDetail;
+          "Accelerator is connected due to reason: " + reasonDetail;
       } else if (msg.data.status == 1) {
         finalReasonText =
-          "Accelerator is Cut OFF due to reason: " + reasonDetail;
+          "Accelerator is disconnected due to reason: " + reasonDetail;
       } else {
         finalReasonText = "Accelerator cut!!";
       }
@@ -349,11 +349,9 @@ const jsonNormalization = (msg) => {
       let finalReasonText;
 
       if (msg.data.status == 0) {
-        finalReasonText =
-          "LIMP Mode has been Deactivated; reason for initial entry: " +
-          reasonDetail;
+        finalReasonText = "LIMP Mode :  Sensor is connected: " + reasonDetail;
       } else if (msg.data.status == 1) {
-        finalReasonText = "LIMP Mode is Active due to reason: " + reasonDetail;
+        finalReasonText = "LIMP Mode : Sensor is disconnected: " + reasonDetail;
       } else {
         finalReasonText = "LIMP Mode Event!";
       }
@@ -452,6 +450,28 @@ const jsonNormalization = (msg) => {
         normalizedJSON.media.inCabin = msg.data.vid_url;
         normalizedJSON.media.dashCam = msg.data.img_url;
         normalizedJSON.media.image = msg.data.img_url;
+        normalizedJSON.device_data = msg.data || {};
+        normalizedJSON.device_type = "Alcohol";
+
+        return JSON.stringify(normalizedJSON);
+      }
+    }
+    //////////////////////////////////////    ALR  /////////////////////////////////////////////////
+    else if (msg.event == "ALR") {
+      //Alcohol based alerts
+      const result = msg.data.sts;
+      const details = ALC_MAP[result];
+
+      if (details) {
+        normalizedJSON.subevent = details.subevent;
+        normalizedJSON.severity = details.severity;
+        normalizedJSON.reason = details.reason;
+
+        normalizedJSON.event_status = result;
+        normalizedJSON.spd_wire = msg.spd_gps || 0;
+        normalizedJSON.media.inCabin = msg.data.vid_url || "";
+        normalizedJSON.media.dashCam = msg.data.img_url || "";
+        normalizedJSON.media.image = msg.data.img_url || "";
         normalizedJSON.device_data = msg.data || {};
         normalizedJSON.device_type = "Alcohol";
 
