@@ -249,15 +249,8 @@ const jsonNormalization = (msg) => {
       },
     };
 
-    //////////////////////////////////    LOC  ////////////////////////////////////////////////////
-    if (msg.event == "LOC") {
-      normalizedJSON.subevent = "LOC";
-      normalizedJSON.severity = "LOW";
-
-      return JSON.stringify(normalizedJSON);
-    }
     //////////////////////////////////   ALM   /////////////////////////////////////////////////////
-    else if (msg.event === "ALM") {
+    if (msg.event === "ALM") {
       const alarmCode = msg.data?.alarm;
       const alarmDetails = ALM_MAP[alarmCode];
       if (alarmDetails) {
@@ -464,27 +457,27 @@ const jsonNormalization = (msg) => {
       }
     }
     //////////////////////////////////////    ALR  /////////////////////////////////////////////////
-    else if (msg.event == "ALR") {
-      //Alcohol based alerts
-      const result = msg.data.sts;
-      const details = ALC_MAP[result];
+    // else if (msg.event == "ALR") {
+    //   //Alcohol based alerts
+    //   const result = msg.data.sts;
+    //   const details = ALC_MAP[result];
 
-      if (details) {
-        normalizedJSON.subevent = details.subevent;
-        normalizedJSON.severity = details.severity;
-        normalizedJSON.reason = details.reason;
+    //   if (details) {
+    //     normalizedJSON.subevent = details.subevent;
+    //     normalizedJSON.severity = details.severity;
+    //     normalizedJSON.reason = details.reason;
 
-        normalizedJSON.event_status = result;
-        normalizedJSON.spd_wire = msg.spd_gps || 0;
-        normalizedJSON.media.inCabin = msg.data.vid_url || "";
-        normalizedJSON.media.dashCam = msg.data.img_url || "";
-        normalizedJSON.media.image = msg.data.img_url || "";
-        normalizedJSON.device_data = msg.data || {};
-        normalizedJSON.device_type = "Alcohol";
+    //     normalizedJSON.event_status = result;
+    //     normalizedJSON.spd_wire = msg.spd_gps || 0;
+    //     normalizedJSON.media.inCabin = msg.data.vid_url || "";
+    //     normalizedJSON.media.dashCam = msg.data.img_url || "";
+    //     normalizedJSON.media.image = msg.data.img_url || "";
+    //     normalizedJSON.device_data = msg.data || {};
+    //     normalizedJSON.device_type = "Alcohol";
 
-        return JSON.stringify(normalizedJSON);
-      }
-    }
+    //     return JSON.stringify(normalizedJSON);
+    //   }
+    // }
     /////////////////////////////////////    BYP  /////////////////////////////////////////////////////
     else if (msg.event == "BYP") {
       //Indicator based Brake Bypass
@@ -604,6 +597,13 @@ const jsonNormalization = (msg) => {
       normalizedJSON.event_status =
         msg.data.DMS == 1 || msg.data.Alco == 1 ? 1 : 0;
       normalizedJSON.reason = finalReasonText;
+
+      return JSON.stringify(normalizedJSON);
+    }
+    //////////////////////////////////    LOC  ////////////////////////////////////////////////////
+    else if (msg.event == "LOC") {
+      normalizedJSON.subevent = "LOC";
+      normalizedJSON.severity = "LOW";
 
       return JSON.stringify(normalizedJSON);
     }
