@@ -249,8 +249,15 @@ const jsonNormalization = (msg) => {
       },
     };
 
+    //////////////////////////////////    LOC  ////////////////////////////////////////////////////
+    if (msg.event == "LOC") {
+      normalizedJSON.subevent = "LOC";
+      normalizedJSON.severity = "LOW";
+
+      return JSON.stringify(normalizedJSON);
+    }
     //////////////////////////////////   ALM   /////////////////////////////////////////////////////
-    if (msg.event === "ALM") {
+    else if (msg.event === "ALM") {
       const alarmCode = msg.data?.alarm;
       const alarmDetails = ALM_MAP[alarmCode];
       if (alarmDetails) {
@@ -548,13 +555,7 @@ const jsonNormalization = (msg) => {
 
       return JSON.stringify(normalizedJSON);
     }
-    //////////////////////////////////    LOC  ////////////////////////////////////////////////////
-    else if (msg.event == "LOC") {
-      normalizedJSON.subevent = "LOC";
-      normalizedJSON.severity = "LOW";
 
-      return JSON.stringify(normalizedJSON);
-    }
     ////////////////////////////////////////    Invalid JSON      ///////////////////////////////////////////
     else if (msg.event == "JSON_Invalid") {
       normalizedJSON.subevent = "JSON_Invalid";
