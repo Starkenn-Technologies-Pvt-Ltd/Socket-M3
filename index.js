@@ -17,6 +17,11 @@ const { socketDataToSend } = require("./Utils/socketDataToSend");
 const { saveInvalidToQuest, getFromQuest } = require("./Utils/saveToQuest");
 const { sendToTele } = require("./Utils/sendToTelegram");
 const { eventName } = require("./Utils/eventName");
+const {
+  getLiveByDevice,
+  getLiveByOrg,
+  updateDeviceLiveData,
+} = require("./Utils/deviceLiveService");
 
 // Initialize Express app
 const app = express();
@@ -32,7 +37,7 @@ const httpServer = createServer(
     requestCert: false,
     rejectUnauthorized: false,
   },
-  app
+  app,
 );
 
 const io = new Server(httpServer, {
@@ -137,6 +142,49 @@ app.delete("/delete-redis-data/:key", async (req, res) => {
   }
 });
 
+// NEW REDIS UPDATE API FOR DEVICE LIVE DATA
+// GET BY ORG OR DEVICE (supports multiple devices)
+app.get("/getDash", async (req, res) => {
+  try {
+    const { orgId, deviceId } = req.query;
+
+    if (!orgId) {
+      return res.status(400).json({ message: "orgId is required" });
+    }
+
+    // If specific device(s)
+    if (deviceId) {
+      const deviceIds = deviceId.split(",");
+
+      const results = [];
+
+      for (const id of deviceIds) {
+        const data = await getLiveByDevice(orgId, id);
+        if (data) results.push(data);
+      }
+
+      return res.status(200).json({
+        message: "Successfully got device data",
+        data: results,
+      });
+    }
+
+    // If only orgId
+    const data = await getLiveByOrg(orgId);
+
+    return res.status(200).json({
+      message: "Successfully got org live data",
+      data,
+    });
+  } catch (err) {
+    console.error("Failed to get live data:", err);
+    res.status(500).json({
+      message: "Failed to get live data",
+      error: err.message,
+    });
+  }
+});
+
 // API to receive Socket Data via Lambda after Rule set and broadcast over socketio
 app.post("/send-socket-data", async (req, res) => {
   const { data } = req.body;
@@ -147,17 +195,17 @@ app.post("/send-socket-data", async (req, res) => {
         console.log(
           "|||||||||||||||||||||||||||||||||||||||||| ",
           data,
-          " |||||||||||||||||||||||||||||||||||||||||||||"
+          " |||||||||||||||||||||||||||||||||||||||||||||",
         );
       }
       console.log(
-        "-----------------------------------------------------------------------"
+        "-----------------------------------------------------------------------",
       );
       const redisData = await getRedisData(key);
       if (redisData) {
         const orgDetails = await getRedisData("telegramOrg");
         let orgName = JSON.parse(orgDetails).filter(
-          (d) => d.orgId == JSON.parse(redisData).vehicle_Data.org_id
+          (d) => d.orgId == JSON.parse(redisData).vehicle_Data.org_id,
         );
         if (orgName && orgName.length) {
           orgName = orgName[0];
@@ -167,10 +215,10 @@ app.post("/send-socket-data", async (req, res) => {
           "Final data to send ::::::::::::",
           finalDataToSend.org_id,
           " | key : ",
-          key
+          key,
         );
         console.log(
-          "------------------------------------------------------------------------"
+          "------------------------------------------------------------------------",
         );
         if (finalDataToSend.org_id) {
           if (
@@ -184,14 +232,14 @@ app.post("/send-socket-data", async (req, res) => {
               (err, responses) => {
                 if (err) {
                   console.error(
-                    `Emit to event '${finalDataToSend.org_id}-Alert' timed out or failed.`
+                    `Emit to event '${finalDataToSend.org_id}-Alert' timed out or failed.`,
                   );
                 } else {
                   console.log(
-                    `Successfully emitted data on event '${finalDataToSend.org_id}-Alert'.`
+                    `Successfully emitted data on event '${finalDataToSend.org_id}-Alert'.`,
                   );
                 }
-              }
+              },
             );
 
             if (
@@ -214,14 +262,14 @@ app.post("/send-socket-data", async (req, res) => {
               let videoLink = data.media.inCabin
                 ? data.media.inCabin
                 : data.media.dashCam
-                ? data.media.dashCam
-                : data.media.image
-                ? data.media.image
-                : null;
+                  ? data.media.dashCam
+                  : data.media.image
+                    ? data.media.image
+                    : null;
               if (videoLink) {
                 logId = await getFromQuest(
                   data.device_id,
-                  data.device_timestamp
+                  data.device_timestamp,
                 );
                 logId = logId.id;
               }
@@ -229,7 +277,7 @@ app.post("/send-socket-data", async (req, res) => {
                 "TELEGRAM :::",
                 orgName,
                 " | ",
-                eventName(data.subevent).eventNameToSend
+                eventName(data.subevent).eventNameToSend,
               );
               sendToTele(
                 orgName.chatId ? orgName.chatId : null,
@@ -247,7 +295,7 @@ app.post("/send-socket-data", async (req, res) => {
                 data.reason,
                 // parseInt(`${data.device_timestamp}000`),
                 new Date(
-                  parseInt(`${data.device_timestamp}000`)
+                  parseInt(`${data.device_timestamp}000`),
                 ).toLocaleString("en-IN", {
                   timeZone: "Asia/Kolkata",
                 }),
@@ -255,7 +303,7 @@ app.post("/send-socket-data", async (req, res) => {
                 data.spd_wire ? data.spd_wire : data.spd_gps ? data.spd_gps : 0,
                 logId,
                 data.lat,
-                data.lng
+                data.lng,
               );
             }
           } else {
@@ -266,15 +314,28 @@ app.post("/send-socket-data", async (req, res) => {
                 (err, responses) => {
                   if (err) {
                     console.error(
-                      `Emit to event '${finalDataToSend.org_id}' timed out or failed.`
+                      `Emit to event '${finalDataToSend.org_id}' timed out or failed.`,
                     );
                   } else {
                     console.log(
-                      `Successfully emitted data on event '${finalDataToSend.org_id}'.`
+                      `Successfully emitted data on event '${finalDataToSend.org_id}'.`,
                     );
                   }
-                }
+                },
               );
+
+              // Call Redis Update here for org
+              // TODO
+              await updateDeviceLiveData({
+                device_id: finalDataToSend.baseObject.device_id,
+                lat: finalDataToSend.baseObject.lat,
+                lng: finalDataToSend.baseObject.lng,
+                spd: finalDataToSend.baseObject.spd_wire
+                  ? finalDataToSend.baseObject.spd_wire
+                  : finalDataToSend.baseObject.spd_gps,
+                device_timestamp: finalDataToSend.baseObject.device_timestamp,
+                org_id: finalDataToSend.org_id,
+              });
             }
           }
         }
@@ -289,7 +350,7 @@ app.post("/send-socket-data", async (req, res) => {
               socketVals.valid_time >= new Date().getTime()
             ) {
               console.log(
-                "------------------------------------|||||||||||||--------------------------------------"
+                "------------------------------------|||||||||||||--------------------------------------",
               );
               console.log(
                 "Share Trip Data ::::::::: ",
@@ -298,10 +359,10 @@ app.post("/send-socket-data", async (req, res) => {
                 socketVals.valid_time >= new Date().getTime(),
                 " | Topic ::::",
                 socketVals.uid,
-                " | "
+                " | ",
               );
               console.log(
-                "------------------------------------|||||||||||||--------------------------------------"
+                "------------------------------------|||||||||||||--------------------------------------",
               );
               if (
                 socketVals.link_type == "alert" ||
@@ -313,10 +374,10 @@ app.post("/send-socket-data", async (req, res) => {
                   (err) => {
                     if (err) {
                       console.error(
-                        `Emit to event '${socketVals.uid}' timed out or failed.`
+                        `Emit to event '${socketVals.uid}' timed out or failed.`,
                       );
                     }
-                  }
+                  },
                 );
               } else {
                 if (finalDataToSend.baseObject.event == "LOC") {
@@ -326,10 +387,10 @@ app.post("/send-socket-data", async (req, res) => {
                     (err) => {
                       if (err) {
                         console.error(
-                          `Emit to event '${socketVals.uid}' timed out or failed.`
+                          `Emit to event '${socketVals.uid}' timed out or failed.`,
                         );
                       }
-                    }
+                    },
                   );
                 }
               }
@@ -345,14 +406,14 @@ app.post("/send-socket-data", async (req, res) => {
                   (err, responses) => {
                     if (err) {
                       console.error(
-                        `Emit to event '${finalDataToSend.org_id}' timed out or failed.`
+                        `Emit to event '${finalDataToSend.org_id}' timed out or failed.`,
                       );
                     } else {
                       console.log(
-                        `Successfully emitted data on event '${finalDataToSend.org_id}'.`
+                        `Successfully emitted data on event '${finalDataToSend.org_id}'.`,
                       );
                     }
-                  }
+                  },
                 );
               }
 
@@ -363,10 +424,10 @@ app.post("/send-socket-data", async (req, res) => {
                   (err) => {
                     if (err) {
                       console.error(
-                        `Emit to event '${eventName}' timed out or failed.`
+                        `Emit to event '${eventName}' timed out or failed.`,
                       );
                     }
-                  }
+                  },
                 );
               }
             }
