@@ -1,6 +1,5 @@
 const { client } = require("./Utils/mqtt");
 const { jsonNormalization } = require("./Utils/normalized");
-const { normalizedJSON2 } = require("./Utils/normalizedJSON2");
 const { getRedisData } = require("./Utils/redisCrud");
 const { setRedisData, deleteRedisData } = require("./Utils/redisCrud");
 const { sendNormalizedJsonToAwsIotCore } = require("./Utils/sendiotcore");
@@ -248,6 +247,7 @@ setInterval(refreshSocketCache, 5 * 60 * 1000); // Every 5 minutes
 
 /**
  * Process a normalized JSON string: enrich, emit to socket, send to IoT Core.
+ * Flow: Normalize -> Socket -> IoT Core
  */
 const processNormalized = (normalizedJSON, mqttmsg, topic, message) => {
   // Guard: skip invalid/error results from normalizers
@@ -265,7 +265,7 @@ const processNormalized = (normalizedJSON, mqttmsg, topic, message) => {
     return;
   }
 
-  // Single JSON.parse — reuse this object everywhere
+  // Single JSON.parse of the normalized string — reuse this object everywhere
   let parsed;
   try {
     parsed = JSON.parse(normalizedJSON);
@@ -280,96 +280,80 @@ const processNormalized = (normalizedJSON, mqttmsg, topic, message) => {
   const device = hmiId ? deviceCache.get(hmiId) : null;
 
   if (!device && hmiId) {
-    console.log(
-      `[CACHE MISS] Device not in cache: ${hmiId} (raw keys: device_id=${mqttmsg?.device_id}, dev_id=${mqttmsg?.dev_id}, HMI_ID=${mqttmsg?.HMI_ID})`
-    );
-  } else if (!device && !hmiId) {
-    // No device id at all in message — skip silently
-  } else if (device && !device.org_id) {
-    console.log(`[NO ORG] Device ${hmiId} has no org_id`);
+    console.log(`[CACHE MISS] Device not in cache: ${hmiId}`);
   }
 
-  if (device && device.org_id) {
-    const orgId = String(device.org_id);
+  // Prepare enrichment data once
+  const orgId = device?.org_id ? String(device.org_id) : null;
 
-    // Build socket payload (strip heavy fields, add enrichment)
-    const data = { ...parsed };
-    delete data.JSON_DUMP;
-    delete data.device_data;
-    data.org_id = orgId;
-    data.vehicle_name = device.vehicle_name || "";
-    data.vehicle_reg_numb = device.vehicle_reg_numb || "";
-    data.vehicle_data = { Registration_No: device.vehicle_reg_numb || "" };
+  // 1. SOCKET EMISSION (Smooth publishing to socket)
+  if (orgId) {
+    // Build socket payload (re-using parsed object to avoid new allocations)
+    // We create a shallow copy for socket to strip heavy fields if needed, 
+    // but here we just add what's necessary and emit.
+    const socketData = { ...parsed };
+    delete socketData.JSON_DUMP;
+    delete socketData.device_data;
+    
+    socketData.org_id = orgId;
+    socketData.vehicle_name = device.vehicle_name || "";
+    socketData.vehicle_reg_numb = device.vehicle_reg_numb || "";
+    socketData.vehicle_data = { Registration_No: device.vehicle_reg_numb || "" };
 
-    console.log(
-      `[SOCKET] device=${hmiId} event=${data.event} subevent=${data.subevent} org=${orgId} clients=${io.engine.clientsCount}`
-    );
+    // Broadcast to global topic
+    io.emit("9223372036854775807", socketData);
 
-    // Broadcast all normalized data (LOC + alerts) to the global firehose topic
-    io.emit("9223372036854775807", data);
-
-    // Socket emission based on event type
-    if (data.event !== "LOC" && data.event !== "LDS" && data.event !== "FLS") {
-      // Alert events → broadcast on orgIdAlert channel
-      io.emit(`${orgId}Alert`, data);
+    if (socketData.event !== "LOC" && socketData.event !== "LDS" && socketData.event !== "FLS") {
+      io.emit(`${orgId}Alert`, socketData);
     } else {
-      // LOC, FLS, LDS → broadcast on orgId channel
-      io.emit(orgId, data);
-
-      if (data.event === "LOC") {
+      io.emit(orgId, socketData);
+      
+      if (socketData.event === "LOC") {
         // Update device live data (fire-and-forget)
         updateDeviceLiveData({
-          device_id: data.device_id,
-          lat: data.lat,
-          lng: data.lng,
-          spd: data.spd_wire ? data.spd_wire : data.spd_gps,
-          device_timestamp: data.device_timestamp,
+          device_id: socketData.device_id,
+          lat: socketData.lat,
+          lng: socketData.lng,
+          spd: socketData.spd_wire || socketData.spd_gps || 0,
+          device_timestamp: socketData.device_timestamp,
           org_id: orgId,
         }).catch((err) => console.error("updateDeviceLiveData error:", err));
 
-        // FLOC: stationary vehicle (speed = 0)
-        if (parseInt(data.spd_gps) === 0 || parseInt(data.spd_wire) === 0) {
-          io.emit(orgId, { ...data, subevent: "FLOC" });
+        if (parseInt(socketData.spd_gps) === 0 || parseInt(socketData.spd_wire) === 0) {
+          io.emit(orgId, { ...socketData, subevent: "FLOC" });
         }
       }
     }
 
-    // Share-trip link handling — O(1) lookup by device_id instead of full array scan
+    // Share-trip logic
     const deviceSocketKeys = hmiId ? socketKeysByDevice.get(hmiId) : null;
     if (deviceSocketKeys) {
       const now = Date.now();
       for (const socketVals of deviceSocketKeys) {
         if (socketVals.valid_time >= now) {
-          if (
-            socketVals.link_type === "alert" ||
-            socketVals.link_type === "alerts"
-          ) {
-            io.emit(socketVals.uid, data);
-          } else if (data.event === "LOC") {
-            io.emit(socketVals.uid, data);
+          if (socketVals.link_type === "alert" || socketVals.link_type === "alerts") {
+            io.emit(socketVals.uid, socketData);
+          } else if (socketData.event === "LOC") {
+            io.emit(socketVals.uid, socketData);
           }
         } else {
-          io.emit(socketVals.uid, {
-            error: true,
-            message: "Link Expired",
-          });
+          io.emit(socketVals.uid, { error: true, message: "Link Expired" });
         }
       }
     }
   }
 
-  // Enrich parsed object with vehicle_id + driver_id before sending to IoT Core
-  // V2 SQS consumers need these fields — avoids MySQL lookup in Lambda
+  // 2. IOT CORE PUBLISHING (Without any loss, direct follow-up)
+  // Enrich parsed object for IoT Core V2 consumers
   if (device) {
-    parsed.vehicle_id = device.vehicle_id
-      ? String(device.vehicle_id)
-      : "unknown";
+    parsed.vehicle_id = device.vehicle_id ? String(device.vehicle_id) : "unknown";
     parsed.driver_id = device.driver_id ? String(device.driver_id) : "0";
-    parsed.org_id = device.org_id ? String(device.org_id) : "";
+    parsed.org_id = orgId || "";
   }
 
-  // Send to IoT Core (fire-and-forget)
-  sendNormalizedJsonToAwsIotCore(JSON.stringify(parsed)).catch((err) =>
+  // Stringify once for publishing
+  const iotMessage = JSON.stringify(parsed);
+  sendNormalizedJsonToAwsIotCore(iotMessage, parsed).catch((err) =>
     console.error("IoT Core publish error:", err.message)
   );
 };
@@ -395,19 +379,10 @@ const mqttTrigger = () => {
 
       const mqttmsg = JSON.parse(message);
 
-      // Normalize then process
-      // normalizedJSON2 is declared async — resolve via .then(), no await needed
-      if (mqttmsg?.ver === "JSON_2.0") {
-        normalizedJSON2(mqttmsg)
-          .then((result) => processNormalized(result, mqttmsg, topic, message))
-          .catch((err) => {
-            console.error("normalizedJSON2 error:", err);
-            saveInvalidToQuest(message, topic);
-          });
-        return;
-      }
-
+      // Normalize using only normalized.js as requested
       const normalizedJSON = jsonNormalization(mqttmsg);
+      
+      // Process flow: Socket -> IoT Core
       processNormalized(normalizedJSON, mqttmsg, topic, message);
     } catch (err) {
       saveInvalidToQuest(message, topic);

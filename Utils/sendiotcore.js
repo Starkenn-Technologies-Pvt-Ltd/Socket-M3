@@ -46,7 +46,7 @@ const connectToAwsIot = () => {
 connectToAwsIot();
 
 // Function to transfer normalized JSON to AWS IoT Core
-const sendNormalizedJsonToAwsIotCore = async (normalizedJSON) => {
+const sendNormalizedJsonToAwsIotCore = async (message, parsed) => {
   return new Promise((resolve, reject) => {
     if (!awsIotConnected) {
       const errorMessage =
@@ -55,17 +55,14 @@ const sendNormalizedJsonToAwsIotCore = async (normalizedJSON) => {
       return reject(new Error(errorMessage));
     }
 
-    const topic = JSON.parse(normalizedJSON).HMI_ID;
-    const message = normalizedJSON;
-
+    const topic = parsed.HMI_ID || "unknown_topic";
+    
     device.publish(topic, message, (err) => {
       if (err) {
         console.error("Error publishing to AWS IoT Core:", err);
         reject(err);
-        return "Error in iot publish";
       } else {
         resolve();
-        return "success in iotcore publish";
       }
     });
   });
