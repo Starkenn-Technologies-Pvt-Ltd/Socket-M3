@@ -17,7 +17,7 @@ let saveInvalidToQuest = async (message = "", topic = "") => {
       newId,
       message,
       topic,
-      new Date().toISOString()
+      new Date().toISOString(),
     ]);
 
     console.log("Invalid JSON saved successfully :::", invalidJson.rowCount);
