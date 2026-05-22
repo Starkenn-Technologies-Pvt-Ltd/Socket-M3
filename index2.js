@@ -3,7 +3,7 @@ const { jsonNormalization } = require("./Utils/normalized");
 const { normalizedJSON2 } = require("./Utils/normalizedJSON2");
 const { getRedisData } = require("./Utils/redisCrud");
 const { setRedisData, deleteRedisData } = require("./Utils/redisCrud");
-const { sendNormalizedJsonToAwsIotCore } = require("./Utils/sendiotcore");
+const { sendToSqs } = require("./Utils/sendToSqs");
 const { pool1 } = require("./Utils/MySql");
 const express = require("express");
 const { createServer } = require("https");
@@ -11,7 +11,6 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
-const { normalizedJSON3 } = require("./Utils/normalizeJSON3");
 const { saveInvalidToQuest, getFromQuest } = require("./Utils/saveToQuest");
 const { sendToTele } = require("./Utils/sendToTelegram");
 const { eventName } = require("./Utils/eventName");
@@ -43,6 +42,9 @@ const io = new Server(httpServer, {
     origin: "*",
     methods: ["GET", "POST"],
   },
+  // Cap per-client write buffer to 5MB — disconnects slow clients instead of leaking memory
+  maxHttpBufferSize: 5e6,
+  perMessageDeflate: false,
 });
 
 io.on("connection", (socket) => {
@@ -83,8 +85,44 @@ const deviceCache = new Map();
 // Org cache: Map<org_id, { org_name, telegram_chat_id }>
 const orgCache = new Map();
 
-// Socket (share-trip) cache — still from Redis
-let cachedSocketKeys = [];
+// Socket (share-trip) cache — still from Redis, indexed by device_id for O(1) lookup
+let socketKeysByDevice = new Map(); // Map<device_id, Array<{uid, valid_time, link_type}>>
+
+/////////////////// Message Flow Stats ///////////////////
+const msgStats = {
+  hits: 0, // cache hit + emitted to socket
+  misses: 0, // cache miss (EC devices etc)
+  invalid: 0, // INVALID_JSON skipped
+  sqsSent: 0, // sent to SQS
+  byEvent: {}, // count per event type (LOC, DMS, ALC, etc)
+  byOrg: {}, // count per org_id
+};
+
+setInterval(() => {
+  const topEvents = Object.entries(msgStats.byEvent)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([k, v]) => `${k}:${v}`)
+    .join(", ");
+
+  const topOrgs = Object.entries(msgStats.byOrg)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([k, v]) => `org${k.slice(-6)}:${v}`)
+    .join(", ");
+
+  console.log(
+    `[STATS] hits=${msgStats.hits} misses=${msgStats.misses} invalid=${msgStats.invalid} sqsSent=${msgStats.sqsSent} | events=[${topEvents}] | orgs=[${topOrgs}]`
+  );
+
+  // Reset counters
+  msgStats.hits = 0;
+  msgStats.misses = 0;
+  msgStats.invalid = 0;
+  msgStats.sqsSent = 0;
+  msgStats.byEvent = {};
+  msgStats.byOrg = {};
+}, 60 * 1000); // every 60 seconds
 
 /**
  * Sync device + org data from MySQL, save to local JSON, populate in-memory Maps.
@@ -131,9 +169,14 @@ const syncFromMySQL = async () => {
       }
     }
 
-    // Write to local JSON files
-    fs.writeFileSync(DEVICE_CACHE_FILE, JSON.stringify(newDeviceMap, null, 2));
-    fs.writeFileSync(ORG_CACHE_FILE, JSON.stringify(newOrgMap, null, 2));
+    // Write to local JSON files (async — doesn't block event loop)
+    const { writeFile } = require("fs/promises");
+    writeFile(DEVICE_CACHE_FILE, JSON.stringify(newDeviceMap)).catch((e) =>
+      console.error("Failed to write device cache:", e.message)
+    );
+    writeFile(ORG_CACHE_FILE, JSON.stringify(newOrgMap)).catch((e) =>
+      console.error("Failed to write org cache:", e.message)
+    );
 
     // Populate in-memory Maps
     deviceCache.clear();
@@ -204,11 +247,18 @@ const loadFromLocalJSON = () => {
 const refreshSocketCache = async () => {
   try {
     const socketData = await getRedisData("socket");
+    const newMap = new Map();
     if (socketData) {
-      cachedSocketKeys = JSON.parse(socketData);
-    } else {
-      cachedSocketKeys = [];
+      const keys = JSON.parse(socketData);
+      for (const entry of keys) {
+        if (!entry.device_id) continue;
+        if (!newMap.has(entry.device_id)) {
+          newMap.set(entry.device_id, []);
+        }
+        newMap.get(entry.device_id).push(entry);
+      }
     }
+    socketKeysByDevice = newMap;
   } catch (err) {
     console.error("Failed to refresh socket cache:", err);
   }
@@ -226,14 +276,14 @@ setInterval(() => {
   syncFromMySQL().catch((err) =>
     console.error("Scheduled MySQL sync failed:", err.message)
   );
-}, 30 * 60 * 1000); // Every 30 minutes
+}, 6 * 60 * 60 * 1000); // Every 6 hours
 
 setInterval(refreshSocketCache, 5 * 60 * 1000); // Every 5 minutes
 
 ///////////////////// MQTT Connection //////////////////////////////////
 
 /**
- * Process a normalized JSON string: enrich, emit to socket, send to IoT Core.
+ * Process a normalized JSON string: enrich, emit to socket, send directly to SQS.
  */
 const processNormalized = (normalizedJSON, mqttmsg, topic, message) => {
   // Guard: skip invalid/error results from normalizers
@@ -244,10 +294,20 @@ const processNormalized = (normalizedJSON, mqttmsg, topic, message) => {
     normalizedJSON.startsWith("Failed") ||
     normalizedJSON.startsWith("failed")
   ) {
+    msgStats.invalid++;
     console.log(
       "Skipping invalid normalization result:",
       normalizedJSON?.substring?.(0, 50)
     );
+    return;
+  }
+
+  // Single JSON.parse — reuse this object everywhere
+  let parsed;
+  try {
+    parsed = JSON.parse(normalizedJSON);
+  } catch (e) {
+    console.error("JSON.parse failed in processNormalized:", e.message);
     return;
   }
 
@@ -257,21 +317,24 @@ const processNormalized = (normalizedJSON, mqttmsg, topic, message) => {
   const device = hmiId ? deviceCache.get(hmiId) : null;
 
   if (!device && hmiId) {
+    msgStats.misses++;
     console.log(
       `[CACHE MISS] Device not in cache: ${hmiId} (raw keys: device_id=${mqttmsg?.device_id}, dev_id=${mqttmsg?.dev_id}, HMI_ID=${mqttmsg?.HMI_ID})`
     );
   } else if (!device && !hmiId) {
-    // No device id at all in message — skip silently or log once
-  } else if (!device.org_id) {
+    // No device id at all in message — skip silently
+  } else if (device && !device.org_id) {
     console.log(`[NO ORG] Device ${hmiId} has no org_id`);
   }
 
   if (device && device.org_id) {
-    const parsed = JSON.parse(normalizedJSON);
+    msgStats.hits++;
     const orgId = String(device.org_id);
+    msgStats.byOrg[orgId] = (msgStats.byOrg[orgId] || 0) + 1;
 
-    // Build enriched payload (replaces socketDataToSend)
+    // Build socket payload (strip heavy fields, add enrichment)
     const data = { ...parsed };
+    msgStats.byEvent[data.event] = (msgStats.byEvent[data.event] || 0) + 1;
     delete data.JSON_DUMP;
     delete data.device_data;
     data.org_id = orgId;
@@ -279,17 +342,19 @@ const processNormalized = (normalizedJSON, mqttmsg, topic, message) => {
     data.vehicle_reg_numb = device.vehicle_reg_numb || "";
     data.vehicle_data = { Registration_No: device.vehicle_reg_numb || "" };
 
-    console.log(
-      `[SOCKET] device=${hmiId} event=${data.event} subevent=${data.subevent} org=${orgId} clients=${io.engine.clientsCount}`
-    );
+    // volatile = drop if client buffer is full (no queuing, no memory leak)
+    // LOC/FLS/LDS are high-frequency — safe to drop; alerts are rare — use reliable emit
+
+    // Global firehose — only to clients that joined this room
+    io.to("9223372036854775807").volatile.emit("9223372036854775807", data);
 
     // Socket emission based on event type
     if (data.event !== "LOC" && data.event !== "LDS" && data.event !== "FLS") {
-      // Alert events → broadcast on orgIdAlert channel
-      io.emit(`${orgId}Alert`, data);
+      // Alert events → reliable emit to org alert room only (rare, must not be dropped)
+      io.to(`${orgId}Alert`).emit(`${orgId}Alert`, data);
     } else {
-      // LOC, FLS, LDS → broadcast on orgId channel
-      io.emit(orgId, data);
+      // LOC, FLS, LDS → volatile to org room only (high frequency, OK to drop)
+      io.to(orgId).volatile.emit(orgId, data);
 
       if (data.event === "LOC") {
         // Update device live data (fire-and-forget)
@@ -304,57 +369,50 @@ const processNormalized = (normalizedJSON, mqttmsg, topic, message) => {
 
         // FLOC: stationary vehicle (speed = 0)
         if (parseInt(data.spd_gps) === 0 || parseInt(data.spd_wire) === 0) {
-          io.emit(orgId, { ...data, subevent: "FLOC" });
+          io.to(orgId).volatile.emit(orgId, { ...data, subevent: "FLOC" });
         }
       }
     }
 
-    // Share-trip link handling (from cached socket keys)
-    if (cachedSocketKeys.length) {
+    // Share-trip link handling — O(1) lookup by device_id instead of full array scan
+    const deviceSocketKeys = hmiId ? socketKeysByDevice.get(hmiId) : null;
+    if (deviceSocketKeys) {
       const now = Date.now();
-      cachedSocketKeys.forEach((socketVals) => {
-        if (socketVals.device_id === hmiId && socketVals.valid_time >= now) {
+      for (const socketVals of deviceSocketKeys) {
+        if (socketVals.valid_time >= now) {
           if (
             socketVals.link_type === "alert" ||
             socketVals.link_type === "alerts"
           ) {
-            io.emit(socketVals.uid, data);
+            io.to(socketVals.uid).volatile.emit(socketVals.uid, data);
           } else if (data.event === "LOC") {
-            io.emit(socketVals.uid, data);
+            io.to(socketVals.uid).volatile.emit(socketVals.uid, data);
           }
-        } else if (socketVals.valid_time < now) {
-          io.emit(socketVals.uid, {
+        } else if (!socketVals._expiredSent) {
+          // Send "Link Expired" only once, not on every message
+          io.to(socketVals.uid).emit(socketVals.uid, {
             error: true,
             message: "Link Expired",
           });
+          socketVals._expiredSent = true;
         }
-      });
+      }
     }
   }
 
-  // Enrich normalized JSON with vehicle_id + driver_id before sending to IoT Core
-  // V2 SQS consumers need these fields — avoids MySQL lookup in Lambda
-  let enrichedJSON = normalizedJSON;
+  // Enrich with vehicle_id + driver_id for SQS consumers
   if (device) {
-    try {
-      const parsed =
-        typeof normalizedJSON === "string"
-          ? JSON.parse(normalizedJSON)
-          : normalizedJSON;
-      parsed.vehicle_id = device.vehicle_id
-        ? String(device.vehicle_id)
-        : "unknown";
-      parsed.driver_id = device.driver_id ? String(device.driver_id) : "0";
-      parsed.org_id = device.org_id ? String(device.org_id) : "";
-      enrichedJSON = JSON.stringify(parsed);
-    } catch (e) {
-      // If JSON parse fails, send original — V2 consumers will fallback to "unknown"
-    }
+    parsed.vehicle_id = device.vehicle_id
+      ? String(device.vehicle_id)
+      : "unknown";
+    parsed.driver_id = device.driver_id ? String(device.driver_id) : "0";
+    parsed.org_id = device.org_id ? String(device.org_id) : "";
   }
 
-  // Send to IoT Core (fire-and-forget)
-  sendNormalizedJsonToAwsIotCore(enrichedJSON).catch((err) =>
-    console.error("IoT Core publish error:", err.message)
+  // Send directly to SQS (fire-and-forget, no IoT Core roundtrip)
+  msgStats.sqsSent++;
+  sendToSqs(parsed).catch((err) =>
+    console.error("SQS send error:", err.message)
   );
 };
 
@@ -373,7 +431,7 @@ const mqttTrigger = () => {
   client.on("message", (topic, message) => {
     try {
       if (!message) {
-        saveInvalidToQuest(message, topic);
+        saveInvalidToQuest("", topic);
         return;
       }
 
@@ -386,7 +444,7 @@ const mqttTrigger = () => {
           .then((result) => processNormalized(result, mqttmsg, topic, message))
           .catch((err) => {
             console.error("normalizedJSON2 error:", err);
-            saveInvalidToQuest(message, topic);
+            saveInvalidToQuest(message?.toString() || "", topic);
           });
         return;
       }
@@ -394,7 +452,7 @@ const mqttTrigger = () => {
       const normalizedJSON = jsonNormalization(mqttmsg);
       processNormalized(normalizedJSON, mqttmsg, topic, message);
     } catch (err) {
-      saveInvalidToQuest(message, topic);
+      saveInvalidToQuest(message?.toString() || "", topic);
       console.error("Error processing MQTT message:", err);
     }
   });
@@ -569,15 +627,10 @@ app.post("/send-socket-data", async (req, res) => {
           chatId,
           `${registrationNo}`,
           eventName(data.subevent).eventNameToSend,
-          data.media?.inCabin && !data.media.inCabin.startsWith("/var")
-            ? `https://svc-dms.s3.ap-south-1.amazonaws.com/${data.media.inCabin}`
-            : null,
-          data.media?.dashCam && !data.media.dashCam.startsWith("/var")
-            ? `https://svc-dms.s3.ap-south-1.amazonaws.com/${data.media.dashCam}`
-            : null,
-          data.media?.image && data.media.image.startsWith("/var")
-            ? `https://svc-dms.s3.ap-south-1.amazonaws.com/${data.media.image}`
-            : null,
+          data.subevent,
+          data.media?.inCabin || null,
+          data.media?.dashCam || null,
+          data.media?.image || null,
           data.reason,
           new Date(parseInt(`${data.device_timestamp}000`)).toLocaleString(
             "en-IN",
@@ -585,7 +638,6 @@ app.post("/send-socket-data", async (req, res) => {
           ),
           orgName,
           data.spd_wire ? data.spd_wire : data.spd_gps ? data.spd_gps : 0,
-          logId,
           data.lat,
           data.lng
         );
